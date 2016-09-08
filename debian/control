@@ -1,0 +1,11 @@
+Source: cozy-weboob
+Section: cozy
+Priority: optional
+Maintainer: Cozy Debian Packaging <debian-packaging@cozycloud.cc>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.5
+
+Package: cozy-weboob
+Architecture: all
+Depends: ${misc:Depends}, python-setuptools, python-pkg-resources
+Description: Weboob is a project which provides a core library, modules and applications

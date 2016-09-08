@@ -1,0 +1,5 @@
+cozy-weboob (1.2-1) unstable; urgency=medium
+
+  First Debian Package (from Cozy)
+
+ -- Cozy Debian Packaging <debian-packaging@cozycloud.cc>  Wed, 07 Sep 2016 09:45:25 +0000
