@@ -25,7 +25,7 @@ from weboob.capabilities import NotAvailable
 
 from weboob.browser import PagesBrowser, URL
 from .pages import VideosListPage, ArteJsonPage
-from .video import VERSION_VIDEO, LANG, QUALITY, FORMATS, SITE
+from .video import VERSION_VIDEO, LANG, QUALITY, SITE, ArteEmptyVideo
 
 
 __all__ = ['ArteBrowser']
@@ -73,9 +73,10 @@ class ArteBrowser(PagesBrowser):
         return video
 
     def get_url(self):
-        url = self.page.get_video_url(self.quality, self.format, self.version.get(self.lang.get('label')),
-                                      self.lang.get('version'))
-        if format == FORMATS.HLS:
+        url, found_format = self.page.get_video_url(self.quality.get('label'), self.format,
+                                                    self.version.get(self.lang.get('label')),
+                                                    self.lang.get('version'))
+        if found_format.startswith('HLS'):
             ext = u'm3u8'
             url = self.get_m3u8_link(url)
         else:
@@ -84,17 +85,21 @@ class ArteBrowser(PagesBrowser):
         return ext, url
 
     def get_m3u8_link(self, url):
-        r = self.openurl(url)
+        r = self.open(url).content.split('\n')
         baseurl = url.rpartition('/')[0]
 
         links_by_quality = []
-        for line in r.readlines():
+        for line in r:
             if not line.startswith('#'):
-                links_by_quality.append(u'%s/%s' % (baseurl, line.replace('\n', '')))
+                if baseurl not in line:
+                    link = u'%s/%s' % (baseurl, line.replace('\n', ''))
+                else:
+                    link = unicode(line.replace('\n', ''))
+                links_by_quality.append(link)
 
         if len(links_by_quality):
             try:
-                return links_by_quality[self.quality[1]]
+                return links_by_quality[self.quality.get('order')]
             except:
                 return links_by_quality[0]
         return NotAvailable
@@ -107,6 +112,13 @@ class ArteBrowser(PagesBrowser):
                                    parameters=parameters).get_program_video()
         if video:
             return self.get_video(video.id, video)
+        else:
+            video = self.webservice.go(__lang=self.lang.get('site'),
+                                       vid=_id, ___site='ARTEPLUS7').get_program_video()
+            video.ext, video.url = self.get_url()
+            # buggy URLs
+            video.url = video.url.replace('%255B', '%5B').replace('%255D', '%5D')
+            return video
 
     def latest_videos(self):
         class_name = 'videos'
@@ -196,3 +208,24 @@ class ArteBrowser(PagesBrowser):
             video.ext, video.url = self.get_url()
             video.id = id
             return video
+        return ArteEmptyVideo()
+
+    def get_arte_creative_categories(self):
+        return self.videos_list.go(site=SITE.CREATIVE.get('id'), lang=self.lang.get('site'),
+                                   cat='').iter_arte_creative_categories()
+
+    def get_arte_creative_videos(self, cat):
+        _cat = cat[-1].replace('^', '/') if cat[-1] != u'accueil' else ''
+        return self.videos_list.go(site=SITE.CREATIVE.get('id'), lang=self.lang.get('site'),
+                                   cat='/%s' % _cat).iter_arte_creative_videos(cat=cat[-1])
+
+    def get_arte_creative_video(self, id, video=None):
+        json_url = self.videos_list.go(_site=SITE.CREATIVE.get('id'), id=id).get_json_url()
+        m = re.search('https://api.arte.tv/api/player/v1/config/(\w{2})/(.*)\?vector=(.*)\&.*', json_url)
+        if m:
+            video = self.webservice.go(__lang=m.group(1),
+                                       vid=m.group(2), ___site=m.group(3)).get_arte_cinema_video(obj=video)
+            video.ext, video.url = self.get_url()
+            video.id = id
+            return video
+        return ArteEmptyVideo()

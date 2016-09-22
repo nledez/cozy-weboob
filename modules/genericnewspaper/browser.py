@@ -1,4 +1,4 @@
-"ArticlePage object for lefigaro"
+"browser for inrocks.fr website"
 # -*- coding: utf-8 -*-
 
 # Copyright(C) 2011  Julien Hebert
@@ -18,19 +18,27 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with weboob. If not, see <http://www.gnu.org/licenses/>.
 
-from weboob.tools.capabilities.messages.genericArticle import GenericNewsPage
+from weboob.browser.url import URL
+from .pages import GenericNewsPage
+from weboob.browser import PagesBrowser
 
 
-class FlashActuPage(GenericNewsPage):
-    "ArticlePage object for lefigaro"
+class GenericPageBrowser(PagesBrowser):
+    generic_news_page = URL(GenericNewsPage)
 
-    def on_loaded(self):
-        self.main_div = self.document.getroot()
-        self.element_title_selector     = "h1"
-        self.element_author_selector    = "div.name>span"
-        self.element_body_selector      = "article, fig-article-body"
+    weboob = None
 
-    def get_body(self):
-        element_body = self.get_element_body()
-        element_body.tag = "div"
-        return self.parser.tostring(element_body)
+    def is_logged(self):
+        return False
+
+    def login(self):
+        pass
+
+    def fillobj(self, obj, fields):
+        pass
+
+    def get_content(self, _id):
+        "return page article content"
+        self.location(_id)
+        if self.page is not None:
+            return self.page.get_article(_id)

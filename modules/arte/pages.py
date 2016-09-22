@@ -22,6 +22,7 @@ from datetime import timedelta
 from weboob.capabilities.image import Thumbnail
 from weboob.capabilities.base import BaseObject, NotAvailable
 from weboob.capabilities.collection import Collection
+from weboob.capabilities.base import empty
 
 from weboob.browser.pages import HTMLPage, JsonPage
 from weboob.browser.elements import DictElement, ItemElement, ListElement, method
@@ -54,13 +55,19 @@ class ArteItemElement(ItemElement):
     obj_date = Date(Dict('VDA', default=NotAvailable), default=NotAvailable)
 
     def obj_duration(self):
-        seconds = Dict('videoDurationSeconds')(self)
-        if isinstance(seconds, basestring):
+        seconds = Dict('videoDurationSeconds', default=NotAvailable)(self)
+        if empty(seconds):
+            return seconds
+        elif isinstance(seconds, basestring):
             seconds = int(seconds)
+
         return timedelta(seconds=seconds)
 
     def obj_thumbnail(self):
-        url = Dict('VTU/IUR')(self)
+        url = Dict('VTU/IUR', default=NotAvailable)(self)
+        if empty(url):
+            return url
+
         thumbnail = Thumbnail(url)
         thumbnail.url = thumbnail.id
         return thumbnail
@@ -99,6 +106,38 @@ class VideosListPage(HTMLPage):
 
             def obj_thumbnail(self):
                 url = CleanText('div/div/a/figure/span/span/@data-src')(self)
+                thumbnail = Thumbnail(url)
+                thumbnail.url = thumbnail.id
+                return thumbnail
+
+    @method
+    class iter_arte_creative_categories(ListElement):
+        item_xpath = '//ul[@class="menu"]/li/a[not(@target)]'
+
+        class item(ItemElement):
+            klass = Collection
+
+            obj_title = CleanText('.', default=u'Accueil')
+            obj_id = CleanText('./@href')
+
+            def obj_split_path(self):
+                _id = Regexp(CleanText('./@href'), '/\w{2}/(.*)', default=u'accueil')(self)
+                return [SITE.CREATIVE.get('id')] + [_id.replace('/', '^')]
+
+    @method
+    class iter_arte_creative_videos(ListElement):
+        item_xpath = '//div[div/i]'
+
+        class item(ItemElement):
+            klass = ArteSiteVideo
+
+            obj__site = SITE.CREATIVE.get('id')
+            obj_id = Format('%s.%s', Field('_site'),
+                            CleanText('./div/h3/a/@href|./div/h1/a/@href'))
+            obj_title = CleanText('./div/h3/a|./div/h1/a')
+
+            def obj_thumbnail(self):
+                url = CleanText('./div/a/img/@src')(self)
                 thumbnail = Thumbnail(url)
                 thumbnail.url = thumbnail.id
                 return thumbnail
@@ -148,7 +187,9 @@ class VideosListPage(HTMLPage):
                 return thumbnail
 
     def get_json_url(self):
-        return self.doc.xpath('//div[@class="video-container"]')[0].attrib['arte_vp_url']
+        if self.doc.xpath('//div[@class="video-container"]'):
+            return self.doc.xpath('//div[@class="video-container"]')[0].attrib['arte_vp_url']
+        return ''
 
 
 class ArteJsonPage(JsonPage):
@@ -172,8 +213,9 @@ class ArteJsonPage(JsonPage):
             streamer = Dict('videoJsonPlayer/VSR/%s/streamer' % (found), default=None)(self.doc)
             url = Dict('videoJsonPlayer/VSR/%s/url' % (found))(self.doc)
             if streamer:
-                return '%s%s' % (streamer, url)
-            return url
+                return '%s%s' % (streamer, url), found
+            return url, found
+        return NotAvailable, ''
 
     def find_url(self, key, urls, version, quality):
         self.logger.debug('available urls: %s' % urls)
@@ -249,7 +291,12 @@ class ArteJsonPage(JsonPage):
     class get_program_video(ArteItemElement):
         def __init__(self, *args, **kwargs):
             super(ArteItemElement, self).__init__(*args, **kwargs)
-            if 'VDO' in self.el['abstractProgram'].keys():
+
+            if 'videoJsonPlayer' in self.el:
+                self.el = self.el.get('videoJsonPlayer')
+            elif 'abstractProgram' not in self.el:
+                return None
+            elif 'VDO' in self.el['abstractProgram'].keys():
                 self.el = self.el['abstractProgram']['VDO']
 
         klass = ArteVideo
