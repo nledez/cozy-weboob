@@ -2,10 +2,18 @@ Source: cozy-weboob
 Section: cozy
 Priority: optional
 Maintainer: Cozy Debian Packaging <debian-packaging@cozycloud.cc>
-Build-Depends: debhelper (>= 9)
+Build-Depends: debhelper (>= 9), python, dh-virtualenv (>= 0.7), libxslt-dev, libxml2-dev,
+      libpython-dev, libtiff5-dev, libjpeg62-turbo-dev, zlib1g-dev, libfreetype6-dev, liblcms2-dev,
+      libwebp-dev
 Standards-Version: 3.9.5
 
 Package: cozy-weboob
-Architecture: all
-Depends: ${misc:Depends}, python-setuptools, python-pkg-resources
+Architecture: any
+Pre-Depends: dpkg (>= 1.16.1), python2.7 | python2.6, ${misc:Pre-Depends}
+Depends: ${python:Depends}, ${misc:Depends}, python-setuptools, python-pkg-resources,
+      python-urllib3, python-html2text, python-prettytable, python-dateutil,
+      python-lxml, python-mechanize, python-yaml, python-cssselect, python-requests,
+      python-imaging
+Replaces: weboob, python-weboob
+Conflicts: weboob, python-weboob
 Description: Weboob is a project which provides a core library, modules and applications

@@ -12,3 +12,8 @@ modules/modules.list
 /localconfig
 *.idea/
 *.DS_Store
+debian/files
+debian/cozy-weboob/
+debian/cozy-weboob.triggers
+debian/cozy-weboob.substvars
+debian/cozy-weboob.debhelper.log

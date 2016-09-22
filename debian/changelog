@@ -1,4 +1,10 @@
-cozy-weboob (1.2-1) unstable; urgency=medium
+cozy-weboob (1.2.2) unstable; urgency=medium
+
+  * Update weboob & add python-imaging dependency
+
+ -- Cozy Debian Packaging <debian-packaging@cozycloud.cc>  Thu, 22 Sep 2016 13:25:17 +0000
+
+cozy-weboob (1.2.1) unstable; urgency=medium
 
   First Debian Package (from Cozy)
 
